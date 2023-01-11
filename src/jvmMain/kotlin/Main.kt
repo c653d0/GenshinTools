@@ -20,10 +20,39 @@ fun main() {
     val loginTicket = "gtScYNwI0ViPsOBCm8hYnNKfNgfmpFNuJDDNtFkr"
     val uid = "80048193"
 
-    val cookie = "_MHYUUID=42cf0628-4abf-4b84-ba8a-afe0d673993c; UM_distinctid=1855823b22b260-0dfdcfe6269ccf-7a575473-144000-1855823b22cffa; mi18nLang=zh-cn; DEVICEFP_SEED_ID=78ebdea191ef74cc; DEVICEFP_SEED_TIME=1672585729956; _ga=GA1.1.408361308.1672585719; account_mid_v2=0vuvyd2iqz_mhy; account_id_v2=80048193; DEVICEFP=38d7ecc1823e8; _ga_KS4J8TXSHQ=GS1.1.1673332964.4.0.1673332965.0.0.0; login_uid=80048193; login_ticket=NyrR9GW4cnZpGE9zyDWff6wegLV0TEUjAg5D7HYe"
+    val cookie = "_MHYUUID=2aceab9c-4517-4d87-a252-2f52cf5b1d91; DEVICEFP_SEED_ID=bdf9153fe4943bf3; DEVICEFP_SEED_TIME=1673414485804; DEVICEFP=38d7ecc5e579a; login_uid=80048193; login_ticket=7Z8mpOM6VPo8LBed094D2fJR2NmTl5Ps7koOOvFT"
 
 
-    GenshinDataHelper().getAuthKey(cookie)
-    println()
+    val headers = HashMap<String,String>()
+    headers["cookie"] = cookie
+
+    val genshinDataHelper = GenshinDataHelper()
+
+    //请求account id
+    val accountInfo = genshinDataHelper.getAccountId(cookie)
+    //请求tokens
+    val tokens = genshinDataHelper.getTokenList(
+        accountInfo.data.accountInfo.webLoginToken,
+        accountInfo.data.accountInfo.accountId,
+        headers
+    )
+
+    //拼接新的cookie
+    val newCookie = StringBuffer()
+    newCookie.append("stuid=${accountInfo.data.accountInfo.accountId};")
+    for (token in tokens.data.list) {
+        newCookie.append("${token.name}=${token.token};")
+    }
+    newCookie.append(cookie)
+
+    //将新的cookie放入header
+    headers["cookie"] = newCookie.toString()
+
+    val users = genshinDataHelper.getUserInfo(headers)
+
+
+    val authKey = genshinDataHelper.getAuthKey(newCookie.toString(),users.list.userList[0])
+
+    genshinDataHelper.getData(authKey.authKey,authKey.authKeyVer,users.list.userList[0])
 
 }

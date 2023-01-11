@@ -8,7 +8,7 @@ import java.security.NoSuchAlgorithmException
 
 class GenshinDataHelper {
     fun getAccountId(cookie:String):AccountInformation{
-        var result:AccountInformation = AccountInformation("", AccountInfoData(AccountInfo("","")));
+        var result = AccountInformation("", AccountInfoData(AccountInfo("","")));
         val string:String
         val time = getCurrentTime()
         val url = "https://webapi.account.mihoyo.com/Api/login_by_cookie?t=$time"
@@ -30,7 +30,8 @@ class GenshinDataHelper {
     fun getTokenList(webLoginToken:String, accountId:String,headers:Map<String,String>):Tokens{
         var result = Tokens("","", TokensData(ArrayList()))
 
-        val url = "https://api-takumi.mihoyo.com/auth/api/getMultiTokenByLoginTicket?login_ticket=$webLoginToken&token_types=3&uid=$accountId"
+        val url = "https://api-takumi.mihoyo.com/auth/api/getMultiTokenByLoginTicket?login_ticket=" +
+                "$webLoginToken&token_types=3&uid=$accountId"
         val httpHelper = InternetConnectHelper()
         val string = httpHelper.httpConnectByGet(url, 5000, headers)
         try {
@@ -46,38 +47,18 @@ class GenshinDataHelper {
         var userInfo = GenshinUserInfo("","", GenshinUserList(ArrayList()))
         val url = "https://api-takumi.mihoyo.com/binding/api/getUserGameRolesByCookie?game_biz=hk4e_cn"
         val string = InternetConnectHelper().httpConnectByGet(url,5000,headers)
-        userInfo = Gson().fromJson(string,GenshinUserInfo::class.java)
+        try {
+            userInfo = Gson().fromJson(string,GenshinUserInfo::class.java)
+        }catch (e:Exception){
+            println("GenshinDataHelper.Class: getUserInfo() occur error: $e")
+        }
         return userInfo
     }
 
-    fun getAuthKey(cookie: String):AuthKeyData{
+    fun getAuthKey(newCookie: String, user:GenshinUserData):AuthKeyData{
         var result = AuthKeyInfo(AuthKeyData("",""))
 
         val headers = HashMap<String,String>()
-        headers["cookie"] = cookie
-
-
-        //请求account id
-        val accountInfo = getAccountId(cookie)
-        //请求tokens
-        val tokens = getTokenList(
-            accountInfo.data.accountInfo.webLoginToken,
-            accountInfo.data.accountInfo.accountId,
-            headers
-        )
-
-        //拼接新的cookie
-        val newCookie = StringBuffer()
-        newCookie.append("stuid=${accountInfo.data.accountInfo.accountId};")
-        for (token in tokens.data.list) {
-            newCookie.append("${token.name}=${token.token};")
-        }
-        newCookie.append(cookie)
-
-        //将新的cookie放入header
-        headers["cookie"] = newCookie.toString()
-
-        val users = getUserInfo(headers)
 
         headers.remove("cookie")
         headers["Content-Type"] = "application/json; charset=utf-8"
@@ -93,11 +74,16 @@ class GenshinDataHelper {
 
         val paramData = HashMap<String,String>();
         paramData["auth_appid"] = "webview_gacha"
-        paramData["game_biz"] = users.list.userList[0].gameBiz
-        paramData["game_uid"] = users.list.userList[0].gameUid
-        paramData["region"] = users.list.userList[0].region
+        paramData["game_biz"] = user.gameBiz
+        paramData["game_uid"] = user.gameUid
+        paramData["region"] = user.region
 
-        val string = InternetConnectHelper().httpConnectByPost("https://api-takumi.mihoyo.com/binding/api/genAuthKey",5000,paramData,headers)
+        val string = InternetConnectHelper().httpConnectByPost(
+            "https://api-takumi.mihoyo.com/binding/api/genAuthKey",
+            5000,
+            paramData,
+            headers
+        )
 
         try {
             result = Gson().fromJson(string,AuthKeyInfo::class.java)
@@ -105,19 +91,53 @@ class GenshinDataHelper {
             println("GenshinDataHelper: getAuthKey occur error : $e")
         }
 
-        getData(result.data.authKey,users.list.userList[0])
         return result.data
     }
 
 
-    fun getData(authKey:String, userData:GenshinUserData){
+    fun getData(authKey:String, authKeyVer: String, userData:GenshinUserData){
         val header = HashMap<String,String>()
         val gachaType = 301
-        val url = "https://hk4e-api.mihoyo.com/event/gacha_info/api/getGachaLog?win_mode=fullscreen&authkey_ver=1&sign_type=2&auth_appid=webview_gacha&init_type=301&lang=zh-cn&device_type=mobile&game_version=CNRELiOS3.0.0_R10283122_S10446836_D10316937&plat_type=ios&authkey=${URLEncoder.encode(authKey,"UTF-8")}&region=${userData.region}&&game_biz=${userData.gameBiz}&gacha_type=${gachaType}&page=1&size=5&end_id=0"
-        println(url)
-        val string = InternetConnectHelper().httpConnectByGet(url, 5000, header)
-        println(string)
+        var endId = "0"
+        var page=0
+        var size=20
+
+        val wishList = ArrayList<WishResult>()
+        var wishResult:WishResult = WishResult(WishResultContent(ArrayList<WishResultData>()))
+
+        while (true){
+            val key = readln()
+            if(key == "l"){
+                page++
+                if(wishResult.data.list.size!=0){
+                    endId = wishResult.data.list[wishResult.data.list.size-1].id
+                }
+                var gameVersion = "CNRELiOS3.0.0_R10283122_S10446836_D10316937"
+                val url = "https://hk4e-api.mihoyo.com/event/gacha_info/api/getGachaLog?" +
+                        "win_mode=fullscreen&authkey_ver=$authKeyVer&sign_type=2&auth_appid=webview_gacha&init_type=$gachaType&" +
+                        "lang=zh-cn&device_type=mobile&game_version=$gameVersion&" +
+                        "plat_type=ios&authkey=${URLEncoder.encode(authKey,"UTF-8")}&region=${userData.region}&" +
+                        "&game_biz=${userData.gameBiz}&gacha_type=${gachaType}&page=$page&size=$size&end_id=$endId"
+                val string = InternetConnectHelper().httpConnectByGet(url, 5000, header)
+                println(string)
+                wishResult = Gson().fromJson(string,WishResult::class.java)
+                if(wishResult.data.list.size == 0){
+                    break
+                }
+                wishList.add(wishResult)
+            }
+
+            if(page>100)
+                break
+        }
+
+        for (wishContentList in wishList) for (wishResultData in wishContentList.data.list) {
+            println(wishResultData)
+        }
+
     }
+
+
     private fun getCurrentTime():String {
         return System.currentTimeMillis().toString().substring(0,10)
     }
