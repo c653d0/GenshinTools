@@ -4,7 +4,6 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.http.HttpHeaders
 
 class InternetConnectHelper {
     fun httpConnectByGet(url:String, timeout:Int, headers: Map<String, String>):String{

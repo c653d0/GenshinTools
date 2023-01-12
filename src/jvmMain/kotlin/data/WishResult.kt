@@ -31,7 +31,8 @@ data class WishResultData(
     val rankType:String,
     @SerializedName("id")
     var id:String
-){
+)
+{
     override fun toString():String{
         return "name=$name\n" +
                 "\titemType=$itemType\n" +

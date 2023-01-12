@@ -1,3 +1,8 @@
+import com.google.gson.Gson
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import util.GenshinDataHelper
 import util.InternetConnectHelper
 
@@ -9,18 +14,26 @@ import util.InternetConnectHelper
 }*/
 
 fun main() {
-    //var result = StringBuffer()
-    val connectHelper = InternetConnectHelper()
-    val args = HashMap<String,String>()
 
-    val time = System.currentTimeMillis().toString().substring(0,10)
-    //args["t"] = time
 
-    //test args
-    val loginTicket = "gtScYNwI0ViPsOBCm8hYnNKfNgfmpFNuJDDNtFkr"
-    val uid = "80048193"
 
-    val cookie = "_MHYUUID=2aceab9c-4517-4d87-a252-2f52cf5b1d91; DEVICEFP_SEED_ID=bdf9153fe4943bf3; DEVICEFP_SEED_TIME=1673414485804; DEVICEFP=38d7ecc5e579a; login_uid=80048193; login_ticket=7Z8mpOM6VPo8LBed094D2fJR2NmTl5Ps7koOOvFT"
+
+
+
+
+
+    runBlocking {
+        getData()
+    }
+
+
+
+
+
+}
+
+suspend fun getData(){
+    val cookie = "_MHYUUID=3d0bf323-1092-4c3d-b6b7-59eccff617bc; DEVICEFP_SEED_ID=13ac95ac6893be15; DEVICEFP_SEED_TIME=1673504155998; DEVICEFP=38d7ecca1c6cf; login_uid=80048193; login_ticket=WvXFAnkxXvrNwBB7FuMWoKgLOMZHyZ7rDrT4CNCw"
 
 
     val headers = HashMap<String,String>()
@@ -50,9 +63,9 @@ fun main() {
 
     val users = genshinDataHelper.getUserInfo(headers)
 
+    println("The json string is :"+Gson().toJson(users))
 
     val authKey = genshinDataHelper.getAuthKey(newCookie.toString(),users.list.userList[0])
 
     genshinDataHelper.getData(authKey.authKey,authKey.authKeyVer,users.list.userList[0])
-
 }
