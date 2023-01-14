@@ -1,10 +1,10 @@
 import com.google.gson.Gson
-import kotlinx.coroutines.GlobalScope
+import data.*
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.runBlocking
+import util.FileOperateHelper
 import util.GenshinDataHelper
-import util.InternetConnectHelper
 
 
 /*fun main() = application {
@@ -16,56 +16,57 @@ import util.InternetConnectHelper
 fun main() {
 
 
-
-
-
-
-
-
     runBlocking {
         getData()
     }
-
-
-
-
-
 }
 
 suspend fun getData(){
-    val cookie = "_MHYUUID=3d0bf323-1092-4c3d-b6b7-59eccff617bc; DEVICEFP_SEED_ID=13ac95ac6893be15; DEVICEFP_SEED_TIME=1673504155998; DEVICEFP=38d7ecca1c6cf; login_uid=80048193; login_ticket=WvXFAnkxXvrNwBB7FuMWoKgLOMZHyZ7rDrT4CNCw"
-
-
-    val headers = HashMap<String,String>()
-    headers["cookie"] = cookie
+    val cookie = ""
 
     val genshinDataHelper = GenshinDataHelper()
 
-    //请求account id
-    val accountInfo = genshinDataHelper.getAccountId(cookie)
-    //请求tokens
-    val tokens = genshinDataHelper.getTokenList(
-        accountInfo.data.accountInfo.webLoginToken,
-        accountInfo.data.accountInfo.accountId,
-        headers
+    var gachaType:Int
+    val result = ArrayList<ArrayList<FinalWishData>>()
+
+    val userData = genshinDataHelper.getUserData(cookie)
+    genshinDataHelper.setList(userData.user.gameUid)
+    val analyseDataList = ArrayList<AnalyseData>()
+
+    var gachaTypeString = ""
+
+    repeat(4){
+        gachaType = GachaType.typeArray[it]
+        gachaTypeString = when(gachaType){
+            GachaType.Character -> "角色活动祈愿"
+            GachaType.Weapon -> "武器活动祈愿"
+            GachaType.Permanent -> "常驻祈愿"
+            GachaType.FreshMan -> "新手祈愿"
+            else -> "错误类型"
+        }
+        println("正在获取$gachaTypeString")
+        val data = genshinDataHelper.getAllData(cookie,gachaType,userData)
+        result.add(genshinDataHelper.mergeData(data,gachaType))
+        val analyseData = genshinDataHelper.analyseData(result[it],gachaType)
+        analyseDataList.add(analyseData)
+        delay(50)
+    }
+
+    repeat(4){
+        println(analyseDataList[it])
+    }
+
+    val dataToFile = DataToFile(
+        userData.user.gameUid,
+        System.currentTimeMillis().toString(),
+        result[0],
+        result[1],
+        result[2],
+        result[3]
     )
 
-    //拼接新的cookie
-    val newCookie = StringBuffer()
-    newCookie.append("stuid=${accountInfo.data.accountInfo.accountId};")
-    for (token in tokens.data.list) {
-        newCookie.append("${token.name}=${token.token};")
-    }
-    newCookie.append(cookie)
+    val content = Gson().toJson(dataToFile)
 
-    //将新的cookie放入header
-    headers["cookie"] = newCookie.toString()
+    FileOperateHelper().writeToFile(userData.user.gameUid,content)
 
-    val users = genshinDataHelper.getUserInfo(headers)
-
-    println("The json string is :"+Gson().toJson(users))
-
-    val authKey = genshinDataHelper.getAuthKey(newCookie.toString(),users.list.userList[0])
-
-    genshinDataHelper.getData(authKey.authKey,authKey.authKeyVer,users.list.userList[0])
 }

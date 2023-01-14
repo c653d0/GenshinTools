@@ -9,18 +9,10 @@ data class WishResult(
 
 data class WishResultContent(
     @SerializedName("list")
-    val list:ArrayList<WishResultData>
+    var list:ArrayList<WishResultData>
 )
 
 data class WishResultData(
-    @SerializedName("uid")
-    val uid:String,
-    @SerializedName("gacha_type")
-    val gachaType:String,
-    @SerializedName("item_id")
-    val itemId:String,
-    @SerializedName("count")
-    val count:String,
     @SerializedName("time")
     val time:String,
     @SerializedName("name")
@@ -38,6 +30,11 @@ data class WishResultData(
                 "\titemType=$itemType\n" +
                 "\trankType=$rankType\n" +
                 "\ttime=$time"
+    }
+
+    override fun equals(other: Any?): Boolean {
+        other as FinalWishData
+        return time == other.time && name == other.name
     }
 }
 
